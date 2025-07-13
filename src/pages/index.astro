@@ -3,14 +3,14 @@ import { NUMBER_OF_POSTS_PER_PAGE } from '../server-constants.ts'
 import {
   getPosts,
   getNumberOfPages,
-  getPageIdPreviewMap
+  getAllBlocksByBlockId
 } from '../lib/notion/client.ts'
 import Layout from '../layouts/Layout.astro'
 import NoContents from '../components/NoContents.astro'
 import PostTitle from '../components/PostTitle.astro'
 import PostFeaturedImage from '../components/PostFeaturedImage.astro'
-import PostPreview from '../components/PostPreview.astro'
-import ReadMoreLink from '../components/ReadMoreLink.astro'
+import PostBody from '../components/PostBody.astro'
+import PostTags from '../components/PostTags.astro'
 import Pagination from '../components/Pagination.astro'
 import styles from '../styles/blog.module.css'
 
@@ -19,9 +19,13 @@ const [posts, numberOfPages] = await Promise.all([
   getNumberOfPages(),
 ])
 
-const [previews] = await Promise.all([
-  getPageIdPreviewMap(posts)
-])
+const postBlocks = new Map()
+for (const post of posts) {
+  if (post.PageId) {
+    const blocks = await getAllBlocksByBlockId(post.PageId)
+    postBlocks.set(post.PageId, blocks)
+  }
+}
 ---
 
 <Layout>
@@ -31,11 +35,11 @@ const [previews] = await Promise.all([
         <NoContents contents={posts} />
       ) : (
         posts.map((post) => (
-          <div class={styles.post} key={post.Slug}>
-            <PostTitle post={post} />
+          <div class={styles.post}>
+            <PostTitle post={post} enableLink={true} />
             <PostFeaturedImage post={post} />
-            <PostPreview previews={previews} post={post} />
-            <ReadMoreLink post={post} />
+            <PostBody blocks={postBlocks.get(post.PageId) || []} />
+            <PostTags post={post} enableLink={true} />
           </div>
         ))
       )
